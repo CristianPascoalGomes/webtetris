@@ -1,0 +1,18 @@
+.block {
+    width: 22;
+    height: 22;
+    fill: white;
+}
+.set{
+    fill: gray;
+}
+svg{
+    width: 253px;
+    height: 503px;
+    background-color: black;
+}
+body{
+    display: table;
+    font-size: large;
+    color: darkblue;
+}
