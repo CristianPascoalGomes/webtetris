@@ -6,6 +6,9 @@
 .set{
     fill: gray;
 }
+.moving{
+    fill: maroon;
+}
 svg{
     width: 253px;
     height: 503px;
