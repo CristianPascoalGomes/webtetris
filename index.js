@@ -1,10 +1,12 @@
 const logger = document.querySelector("#log");
+function clearLog() { logger.innerHTML = ""; }
 function log(msg) {
+    clearLog();
     console.log(msg);
     logger.innerHTML += msg + "<br>";
 }
-
-function clearLog() { logger.innerHTML = ""; }
+const counter = document.querySelector("#counter");
+const next = document.querySelector("#next");
 
 class CellState {
     static Empty = new CellState('empty');
@@ -102,11 +104,11 @@ class Field {
     }
 
     /**
-     * @param {Vec} x
+     * @param {Vec} pos
     */
     toggle(pos) {
         var value = f.get(pos);
-        if (f.get(pos) == CellState.Filled || f.get(pos) == CellState.Moving) {
+        if (value == CellState.Filled || value == CellState.Moving) {
             f.set(pos, CellState.Empty);
         } else {
             f.set(pos, CellState.Filled);
@@ -121,7 +123,8 @@ class Field {
         try {
             const value = this.#field[`${pos.x},${pos.y}`];
             if (value == undefined) {
-                return false;
+                this.#field[`${pos.x},${pos.y}`] = CellState.Empty;
+                return CellState.Empty;
             }
             return value;
         } catch (error) {
@@ -129,103 +132,291 @@ class Field {
         }
     }
 
-    #rowCollapserRoutine() {
-        for (let y = 0; y < this.#height; y++) {
-            for (let x = 0; x < this.#width; x++) {
-                if (!this.get(x, y)) {
-                    break;
-                }
-                if (this.get(x, y) && x == this.#width - 1) {
-                    log(`row ${y} is collapsed`);
-                    for (let index = 0; index < this.#width; index++) {
-                        this.set(index, y, false);
-                    }
-                }
+    clear() {
+        for (let x = 0; x < this.getWidth(); x++) {
+            for (let y = 0; y < this.getHeight(); y++) {
+                f.set(new Vec(x, y), CellState.Empty);
             }
         }
     }
 }
 const f = new Field();
 
-const initPos = new Vec(4, 0);
-var blkPos = new Vec(4, 0);
-const o = [
-    new Vec(0, 0),
-    new Vec(1, 0),
-    new Vec(0, 1),
-    new Vec(1, 1),
-];
+// class Piece {
+//     #arr = new Array(4);
+
+//     constructor(a, b, c, d) {
+//         arr[0] = a;
+//         arr[1] = b;
+//         arr[2] = c;
+//         arr[3] = d;
+//     }
+
+//     get(index){
+//         this.#arr[index];
+//     }
+// }
+
+const pieces = {
+    Square: [
+        new Vec(0, 0),
+        new Vec(1, 0),
+        new Vec(0, 1),
+        new Vec(1, 1),
+    ],
+    S: [
+        new Vec(0, 0),
+        new Vec(1, 0),
+        new Vec(1, 1),
+        new Vec(2, 1),
+    ],
+    Z: [
+        new Vec(1, 0),
+        new Vec(2, 0),
+        new Vec(0, 1),
+        new Vec(1, 1),
+    ],
+    T: [
+        new Vec(1, 0),
+        new Vec(0, 1),
+        new Vec(1, 1),
+        new Vec(2, 1),
+    ],
+    I: [
+        new Vec(0, 0),
+        new Vec(0, 1),
+        new Vec(0, 2),
+        new Vec(0, 3),
+    ],
+    L: [
+        new Vec(2, 0),
+        new Vec(0, 1),
+        new Vec(1, 1),
+        new Vec(2, 1),
+    ],
+    J: [
+        new Vec(0, 0),
+        new Vec(0, 1),
+        new Vec(1, 1),
+        new Vec(2, 1),
+    ]
+}
+
+const piecesArray = Object.values(pieces);
+
+/**
+ * @param {Array<Vec>} piece
+ * @returns {Vec}
+ */
+function getCenterOfPiece(piece) {
+    var max = new Vec(0, 0);
+    var min = new Vec(0, 0);
+    piece.forEach(blk => {
+        if (blk.x > max.x) {
+            max.x = blk.x;
+        }
+        if (blk.y > max.y) {
+            max.y = blk.y;
+        }
+        if (blk.x < min.x) {
+            min.x = blk.x;
+        }
+        if (blk.y < min.y) {
+            min.y = blk.y;
+        }
+    });
+    return min.add(max.divide(2));
+}
+
+/**
+ * @param {Array<Vec>} piece 
+ * @returns {Array<Vec>}
+ */
+function rotatePiece(piece) {
+    var newPiece = Array(4);
+    var min = new Vec(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    for (let index = 0; index < piece.length; index++) {
+        const blk = piece[index];
+        var x = -blk.y;
+        var y = blk.x;
+        newPiece[index] = new Vec(x, y);
+
+        min.x = Math.min(min.x, x);
+        min.y = Math.min(min.y, y);
+    }
+
+    for (let index = 0; index < newPiece.length; index++) {
+        newPiece[index] = newPiece[index].sub(min);
+    }
+
+    return newPiece;
+}
 
 /**
  * @param {Array} piece
  * @param {Vec} newPos
  * @returns {boolean}
- */
-function canMove(piece, newPos) {
-    canMove = true;
-    newPos.
-    piece.forEach(blok => {
-        if (f.get(newPos) == CellState.Filled || newPos.y > f.getHeight() - 1) {  //piece placed
-            canMove = false;
+*/
+function canSetPieceAt(piece, newPos) {
+    var can = true;
+    piece.forEach(block => {
+        const newBlockPos = newPos.add(block);
+        if (f.get(newBlockPos) == CellState.Filled || !f.check(newBlockPos)) {
+            can = false;
             return;
         }
     });
+    return can;
+}
+
+/**
+ * @param {Array} piece
+ * @param {Vec} newPos
+ * @returns {boolean}
+*/
+function canRotatePieceAt(piece, newPos) {
+    var can = true;
+    var rotatedPiece = rotatePiece(piece);
+    rotatedPiece.forEach(block => {
+        const newBlockPos = newPos.add(block);
+        if (f.get(newBlockPos) == CellState.Filled || !f.check(newBlockPos)) {
+            can = false;
+            return;
+        }
+    });
+    return can;
+}
+
+/**
+ * @param {Array} piece
+ * @param {Vec} newPos
+*/
+function setPieceAt(piece, newPos) {
+    if (canSetPieceAt(piece, newPos)) {
+        piece.forEach(block => {
+            const newBlockPos = newPos.add(block);
+            f.set(newBlockPos, CellState.Filled);
+        });
+    }
 }
 
 
-setInterval(() => {
-    var canMove = true;
-    o.forEach(piece => {
-        const prev = new Vec(0, 0).add(blkPos).add(piece);
-        const next = new Vec(0, 1).add(prev);
-        if (f.get(next) == CellState.Filled || next.y > f.getHeight() - 1) {  //piece placed
-            canMove = false;
-            return;
+function updateField() {
+    for (let x = 0; x < f.getWidth(); x++) {    //remove all moving blocks
+        for (let y = 0; y < f.getHeight(); y++) {
+            var currentPosition = new Vec(x, y);
+            var cellState = f.get(currentPosition);
+            if (cellState == CellState.Moving) {
+                f.set(currentPosition, CellState.Empty);
+            }
         }
-    });
-    o.forEach(piece => {
-        const next = new Vec(0, 0).add(blkPos).add(piece);
-        f.set(next, CellState.Empty);
-    });
-    if (canMove) {
-        blkPos.y += 1;
-        o.forEach(piece => {
-            const next = new Vec(0, 0).add(blkPos).add(piece);
-            f.set(next, CellState.Moving);
+        currentPiece.forEach(block => {
+            f.set(block.add(currentPiecePos), CellState.Moving);
         });
-    } else {
-        o.forEach(piece => {
-            const next = new Vec(0, 0).add(blkPos).add(piece);
-            f.set(next, CellState.Filled);
-        });
-        blkPos = new Vec(initPos.x, initPos.y);
     }
+
+}
+
+
+/**
+ * 
+ * @param {Number} y 
+ * @returns {Boolean}
+*/
+function isLineFull(y) {
+    for (let x = 0; x < f.getWidth(); x++) {
+        const blockState = f.get(new Vec(x, y));
+        if (blockState == CellState.Empty) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * 
+ * @param {Number} y 
+*/
+function breakLine(y) {
+    for (let x = 0; x < f.getWidth(); x++) {
+        f.set(new Vec(x, y), CellState.Empty);
+    }
+    for (let currY = y; currY >= 0; currY--) {
+        for (let x = 0; x < f.getHeight(); x++) {
+            f.set(new Vec(x, currY), f.get(new Vec(x, currY - 1)));
+        }
+    }
+}
+
+function getRandomPiece(){
+    const index = Math.round(Math.random() * (piecesArray.length - 1));
+    return piecesArray[index];
+}
+
+var points = 0;
+const initPos = new Vec(4, 0);
+var currentPiecePos = Vec.zero();
+var currentPiece = getRandomPiece();
+var nextPiece = getRandomPiece();
+next.innerHTML = nextPiece.toString();
+var isGameOver = false;
+
+setInterval(() => {
+    if (canSetPieceAt(currentPiece, currentPiecePos.add(Vec.down()))) {     //if can fall
+        currentPiecePos = currentPiecePos.add(Vec.down());
+    } else {
+        setPieceAt(currentPiece, currentPiecePos);
+        for (let y = 0; y < f.getHeight(); y++) {
+            if (isLineFull(y)) {
+                breakLine(y);
+                points++;
+                log("1+");
+                counter.innerHTML = `Counter: ${points}`;    
+            }
+        }
+        if (canSetPieceAt(currentPiece, initPos)) {     //tries to spawn another piece 
+            currentPiecePos = initPos.copy();
+            currentPiece = nextPiece;
+            nextPiece = getRandomPiece();
+            next.innerHTML = nextPiece.toString();
+        }
+        else {
+            alert("Game Over");
+            f.clear();
+            points = 0;
+            counter.innerHTML = `Counter: ${points}`;
+        }
+    }
+    
+    updateField();
 }, 500);
 
 document.addEventListener("keydown", (event) => {
-
     const key = event.key;
 
-    if (key == "space" || key == "d" || key == "a" || key == "s") {
-        o.forEach(piece => {
-            const next = new Vec(0, 0).add(blkPos).add(piece);
-            f.set(next, CellState.Empty);
-        });
+    var moving = Vec.zero();
+    if (key == "s") {
+        moving = moving.add(Vec.down());
+    }
+    else if (key == "d") {
+        moving = moving.add(Vec.right());
+    }
+    else if (key == "a") {
+        moving = moving.sub(Vec.right());
+    }
+    if (canSetPieceAt(currentPiece, currentPiecePos.add(moving))) {
+        currentPiecePos = currentPiecePos.add(moving);
+        updateField();
+    }
 
-        if (key == "d") {
-            blkPos = new Vec(1, 0).add(blkPos);
+    if (key == "w") {
+        const rotatedPiece = rotatePiece(currentPiece);
+        if (canSetPieceAt(rotatedPiece, currentPiecePos)) {
+            currentPiece = rotatedPiece;
+            updateField();
+        } else {
+            log("cant rotate");
         }
-        else if (key == "a") {
-            blkPos = new Vec(-1, 0).add(blkPos);
-        }
-        else if (key == "s") {
-            blkPos = new Vec(0, 1).add(blkPos);
-        }
-
-        o.forEach(piece => {
-            const next = new Vec(0, 0).add(blkPos).add(piece);
-            f.set(next, CellState.Moving);
-        });
     }
 });
 log("game started");

@@ -38,15 +38,7 @@ class Vec {
     /**
      * @param {Vec} other 
      * @returns {Vec}
-     */
-    add(other) {
-        return new Vec(this.x + other.x, this.y + other.y);
-    }
-
-    /**
-     * @param {Vec} other 
-     * @returns {Vec}
-     */
+    */
     static add(vecA, vecB) {
         return new Vec(vecA.x + vecB.x, vecA.y + vecB.y);
     }
@@ -55,8 +47,41 @@ class Vec {
      * @param {Vec} other 
      * @returns {Vec}
      */
+    add(other) {
+        return Vec.add(this, other);
+    }
+
+    /**
+     * @param {Vec} other 
+     * @returns {Vec}
+     */
     static sub(vecA, vecB) {
         return new Vec(vecA.x - vecB.x, vecA.y - vecB.y);
+    }
+
+    /**
+     * @param {Vec} other 
+     * @returns {Vec}
+     */
+    sub(other) {
+        return Vec.sub(this, other);
+    }
+
+    /**
+     * @param {Vec} vec 
+     * @param {Number} number 
+     * @returns {Vec}
+     */
+    static divide(vec, number) {
+        return new Vec(vec.x / number, vec.y / number);
+    }
+
+    /**
+     * @param {Number} number 
+     * @returns {Vec}
+     */
+    divide(number) {
+        return Vec.divide(this, number);
     }
 
     /**
